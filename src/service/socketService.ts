@@ -130,7 +130,15 @@ class SocketService implements ISocketService {
       return;
     }
 
-    this.socket.on('message', callback);
+    this.socket.on('message', message => {
+      console.log('Odaya gelen mesaj:', {
+        odaId: message.room_id || message.roomId,
+        gönderen: message.sender_id || message.senderId,
+        içerik: message.content,
+        zaman: message.timestamp || new Date().toISOString(),
+      });
+      callback(message);
+    });
   }
 
   onRoomJoined(callback: (room: any) => void): void {

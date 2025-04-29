@@ -1,4 +1,4 @@
-import React, {useEffect, useRef, useState, useMemo} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import {
   StyleSheet,
   View,
@@ -7,6 +7,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Dimensions,
+  Text,
 } from 'react-native';
 import {RouteProp, useRoute} from '@react-navigation/native';
 import {useDispatch, useSelector} from 'react-redux';
@@ -19,7 +20,7 @@ import {
   sendMessage,
   addMessage,
 } from '../redux/slices/chatSlice';
-import {COLORS, SCREENS} from '../config/constants';
+import {COLORS, SCREENS, MESSAGE_TYPES} from '../config/constants';
 import MessageBubble from '../components/MessageBubble';
 import ChatInput from '../components/ChatInput';
 import {Message} from '../types';
@@ -30,9 +31,6 @@ type ChatRoomScreenRouteProp = RouteProp<
   typeof SCREENS.CHAT_ROOM
 >;
 
-const windowWidth = Dimensions.get('window').width;
-const windowHeight = Dimensions.get('window').height;
-
 const ChatRoomScreen: React.FC = () => {
   const route = useRoute<ChatRoomScreenRouteProp>();
   const {roomId, roomName} = route.params;
@@ -40,7 +38,6 @@ const ChatRoomScreen: React.FC = () => {
   const flatListRef = useRef<FlatList>(null);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
-  // Selector'ları memoize edelim
   const messages = useSelector(
     (state: RootState) => state.chat.messages[roomId] || [],
   );
@@ -48,24 +45,44 @@ const ChatRoomScreen: React.FC = () => {
   const user = useSelector((state: RootState) => state.auth.user);
 
   useEffect(() => {
-    // Oda mesajlarını yükle
     dispatch(fetchMessages(roomId) as any);
 
-    // Socket olaylarını dinle
     socketService.onMessage(newMessage => {
-      if (newMessage.roomId === roomId) {
-        dispatch(addMessage(newMessage));
+      console.log('Alınan mesaj:', newMessage);
+      const roomIdField = newMessage.room_id || newMessage.roomId;
+
+      if (roomIdField === roomId) {
+        if (newMessage.content.includes('odaya katıldı')) {
+          const systemMessage: Message = {
+            id: String(Date.now()),
+            roomId: roomIdField,
+            senderId: 'system',
+            content: newMessage.content,
+            type: MESSAGE_TYPES.SYSTEM as any,
+            timestamp: newMessage.timestamp || new Date().toISOString(),
+            status: 'delivered',
+          };
+          dispatch(addMessage(systemMessage));
+        } else {
+          const formattedMessage: Message = {
+            id: newMessage.id || String(Date.now()),
+            roomId: roomIdField,
+            senderId: newMessage.sender_id || newMessage.senderId,
+            content: newMessage.content,
+            type: MESSAGE_TYPES.TEXT as any,
+            timestamp: newMessage.timestamp || new Date().toISOString(),
+            status: 'delivered',
+          };
+          dispatch(addMessage(formattedMessage));
+        }
       }
     });
 
-    // Temizlik fonksiyonu
     return () => {
-      // Odadan ayrıl
       socketService.leaveRoom(roomId);
     };
   }, [dispatch, roomId]);
 
-  // Yeni mesaj geldiğinde otomatik aşağı kaydır
   useEffect(() => {
     if (messages.length > 0 && !isInitialLoad) {
       setTimeout(() => {
@@ -89,6 +106,14 @@ const ChatRoomScreen: React.FC = () => {
   };
 
   const renderMessage = ({item}: {item: Message}) => {
+    if (item.type === MESSAGE_TYPES.SYSTEM) {
+      return (
+        <View style={styles.systemMessageContainer}>
+          <Text style={styles.systemMessageText}>{item.content}</Text>
+        </View>
+      );
+    }
+
     const isMine = item.senderId === user?.id;
     return <MessageBubble message={item} isMine={isMine} />;
   };
@@ -141,6 +166,19 @@ const styles = StyleSheet.create({
   },
   messageList: {
     paddingVertical: 10,
+  },
+  systemMessageContainer: {
+    alignSelf: 'center',
+    backgroundColor: COLORS.TEXT_LIGHT,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    marginVertical: 8,
+  },
+  systemMessageText: {
+    color: COLORS.SURFACE,
+    fontSize: 12,
+    textAlign: 'center',
   },
 });
 
