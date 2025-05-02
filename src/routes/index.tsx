@@ -10,9 +10,18 @@ import {RootState} from '../redux/store';
 import {getUserToken, getUserData} from '../utils/storage';
 import {setUser} from '../redux/slices/authSlice';
 import socketService from '../service/socketService';
+import {initializeFirebase} from '../config/firebaseConfig';
 
-// Ekranlar (henüz oluşturulmadı, daha sonra eklenecek)
-import LoginScreen from '../screens/LoginScreen';
+// Auth Ekranları
+import {
+  LoginScreen,
+  RegisterScreen,
+  EmailVerificationScreen,
+  ForgotPasswordScreen,
+  ChangePasswordScreen,
+} from '../screens/auth';
+
+// Ana Ekranlar
 import RoomListScreen from '../screens/RoomListScreen';
 import ChatRoomScreen from '../screens/ChatRoomScreen';
 import CreateRoomScreen from '../screens/CreateRoomScreen';
@@ -20,6 +29,10 @@ import CreateRoomScreen from '../screens/CreateRoomScreen';
 // Stack navigator türleri
 export type AuthStackParamList = {
   [SCREENS.LOGIN]: undefined;
+  [SCREENS.REGISTER]: undefined;
+  [SCREENS.EMAIL_VERIFICATION]: {email: string};
+  [SCREENS.FORGOT_PASSWORD]: undefined;
+  [SCREENS.CHANGE_PASSWORD]: undefined;
 };
 
 export type MainStackParamList = {
@@ -38,6 +51,19 @@ const AuthNavigator = () => (
       headerShown: false,
     }}>
     <AuthStack.Screen name={SCREENS.LOGIN} component={LoginScreen} />
+    <AuthStack.Screen name={SCREENS.REGISTER} component={RegisterScreen} />
+    <AuthStack.Screen
+      name={SCREENS.EMAIL_VERIFICATION}
+      component={EmailVerificationScreen}
+    />
+    <AuthStack.Screen
+      name={SCREENS.FORGOT_PASSWORD}
+      component={ForgotPasswordScreen}
+    />
+    <AuthStack.Screen
+      name={SCREENS.CHANGE_PASSWORD}
+      component={ChangePasswordScreen}
+    />
   </AuthStack.Navigator>
 );
 
@@ -80,6 +106,9 @@ const AppNavigator = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // Firebase'i başlat
+    initializeFirebase();
+
     // Uygulama başladığında kullanıcı verilerini kontrol et
     const checkUserToken = async () => {
       try {
@@ -89,8 +118,8 @@ const AppNavigator = () => {
           if (userData) {
             dispatch(setUser(userData));
 
-            // Socket bağlantısını başlat
-            socketService.connect(storedToken);
+            // Socket bağlantısını başlat (Firebase auth ile değişecek)
+            // socketService.connect(storedToken);
           }
         }
       } catch (error) {

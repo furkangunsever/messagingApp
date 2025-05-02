@@ -3,6 +3,8 @@ import {MESSAGE_TYPES} from '../config/constants';
 export interface User {
   id: string;
   username: string;
+  email?: string;
+  photoURL?: string | null;
   isOnline?: boolean;
   lastSeen?: string;
 }
@@ -41,6 +43,9 @@ export interface AuthState {
   user: User | null;
   isLoading: boolean;
   error: string | null;
+  isEmailVerified: boolean;
+  emailVerificationSent: boolean;
+  resetPasswordSent: boolean;
 }
 
 export interface ChatState {
@@ -70,4 +75,31 @@ export interface AppTheme {
 
 export interface LoginCredentials {
   username: string;
+}
+
+export interface RegisterCredentials {
+  email: string;
+  password: string;
+  confirmPassword: string;
+  displayName: string;
+}
+
+export interface EmailVerificationCredentials {
+  email: string;
+  code: string;
+}
+
+export interface PasswordChangeCredentials {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
+export interface PasswordResetCredentials {
+  email: string;
+}
+
+export interface PasswordUpdateCredentials {
+  password: string;
+  confirmPassword: string;
 }

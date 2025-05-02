@@ -63,7 +63,6 @@ const ChatInput: React.FC<ChatInputProps> = ({
 const SendIcon = () => (
   <View style={styles.sendIconContainer}>
     <View style={styles.sendIconTriangle} />
-    <View style={styles.sendIconRectangle} />
   </View>
 );
 
@@ -120,14 +119,6 @@ const styles = StyleSheet.create({
     borderRightColor: 'transparent',
     borderBottomColor: 'white',
     transform: [{rotate: '90deg'}],
-  },
-  sendIconRectangle: {
-    position: 'absolute',
-    width: 8,
-    height: 8,
-    backgroundColor: 'white',
-    bottom: 0,
-    left: 0,
   },
 });
 

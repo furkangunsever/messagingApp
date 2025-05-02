@@ -34,7 +34,14 @@ export const MESSAGE_TYPES = {
 
 // Ekran isimleri
 export const SCREENS = {
+  // Auth ekranları
   LOGIN: 'Login',
+  REGISTER: 'Register',
+  EMAIL_VERIFICATION: 'EmailVerification',
+  FORGOT_PASSWORD: 'ForgotPassword',
+  CHANGE_PASSWORD: 'ChangePassword',
+
+  // Ana ekranlar
   ROOM_LIST: 'RoomList',
   CHAT_ROOM: 'ChatRoom',
   CREATE_ROOM: 'CreateRoom',

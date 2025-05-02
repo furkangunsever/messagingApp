@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "422623805074",
+    "project_id": "messagingapp-36171",
+    "storage_bucket": "messagingapp-36171.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:422623805074:android:f2fa7a016e9e7e02e6f04b",
+        "android_client_info": {
+          "package_name": "com.socket_based_messagingapp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "422623805074-9lv4rkvv0ftlrl04cph9lbriudmh3n5s.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.socket_based_messagingapp",
+            "certificate_hash": "d5e417b61d5dfeccb91016d62d83b98f333e0e75"
+          }
+        },
+        {
+          "client_id": "422623805074-m8gusq32tduaie6r1nnjvrs94hrmq00p.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.socket_based_messagingapp",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
+          "client_id": "422623805074-2svplrp61omve27i083a6b38bod9ksv3.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCkxjbPvwuEXwspk-aVJPtPAsruQC5FwXU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "422623805074-2svplrp61omve27i083a6b38bod9ksv3.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
