@@ -2,6 +2,17 @@ import auth from '@react-native-firebase/auth';
 import {GoogleSignin} from '@react-native-google-signin/google-signin';
 import {Alert} from 'react-native';
 import {errorLogger} from '../utils/errorLogger';
+import database from '@react-native-firebase/database';
+import {FIREBASE_DB_URL} from '../config/firebaseConfig';
+
+// Firebase bağlantısını doğrudan başlat
+try {
+  if (database().app && database().app.options) {
+    database().app.options.databaseURL = FIREBASE_DB_URL;
+  }
+} catch (err) {
+  // Hata durumunda sessiz kal
+}
 
 // Firebase Auth Servisi
 class FirebaseAuthService {
@@ -79,7 +90,7 @@ class FirebaseAuthService {
       }
 
       // Google kimlik doğrulama - API yapısına göre idToken kullanımı
-      const { idToken, accessToken } = await GoogleSignin.getTokens();
+      const {idToken, accessToken} = await GoogleSignin.getTokens();
       if (!idToken) {
         throw {
           code: 'auth/invalid-credential',
@@ -218,6 +229,87 @@ class FirebaseAuthService {
   // Kullanıcının durumunu takip et
   onAuthStateChanged(callback: (user: any) => void) {
     return auth().onAuthStateChanged(callback);
+  }
+
+  // Mevcut kullanıcıyı al
+  async getCurrentUser() {
+    return auth().currentUser;
+  }
+
+  // --- Hobi ve Kategori İşlemleri ---
+
+  // Tüm kategorileri ve hobileri getir
+  async getCategories(): Promise<any[]> {
+    try {
+      // Veritabanı URL'sini kontrol et ve gerekirse ayarla
+      if (!database().app.options.databaseURL) {
+        database().app.options.databaseURL = FIREBASE_DB_URL;
+      }
+
+      // Doğrudan kategorileri al
+      const snapshot = await database().ref('/kategoriler').once('value');
+
+      if (snapshot.exists()) {
+        const categories: any[] = [];
+        snapshot.forEach(childSnapshot => {
+          const category = childSnapshot.val();
+          category.id = childSnapshot.key;
+          categories.push(category);
+          return undefined;
+        });
+
+        return categories;
+      }
+
+      // Veriler bulunamadıysa varsayılan kategorileri döndür
+      return this.getDefaultCategories();
+    } catch (error) {
+      // Hata durumunda varsayılan kategorileri döndür
+      return this.getDefaultCategories();
+    }
+  }
+
+  // Kullanıcının seçtiği hobileri kaydet
+  async saveUserHobbies(userId: string, hobbies: string[]) {
+    try {
+      await database().ref(`userHobbies/${userId}`).set({
+        hobbies,
+        updatedAt: new Date().toISOString(),
+      });
+      return true;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Kullanıcının seçtiği hobileri getir
+  async getUserHobbies(userId: string) {
+    try {
+      const snapshot = await database()
+        .ref(`userHobbies/${userId}`)
+        .once('value');
+      return snapshot.val();
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Varsayılan test kategorilerini döndür
+  private getDefaultCategories(): any[] {
+    return [
+      {
+        id: 'sanat',
+        name: 'Sanat',
+        emoji: '🎨',
+        hobiler: ['Resim', 'Heykel', 'Kaligrafi'],
+      },
+      {
+        id: 'teknoloji',
+        name: 'Teknoloji',
+        emoji: '💻',
+        hobiler: ['Yapay Zeka', 'Mobil Uygulama', 'Robotik'],
+      },
+    ];
   }
 }
 

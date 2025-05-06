@@ -25,6 +25,7 @@ import {
 import RoomListScreen from '../screens/RoomListScreen';
 import ChatRoomScreen from '../screens/ChatRoomScreen';
 import CreateRoomScreen from '../screens/CreateRoomScreen';
+import HobbySelectScreen from '../screens/HobbySelectScreen';
 
 // Stack navigator türleri
 export type AuthStackParamList = {
@@ -33,12 +34,14 @@ export type AuthStackParamList = {
   [SCREENS.EMAIL_VERIFICATION]: {email: string};
   [SCREENS.FORGOT_PASSWORD]: undefined;
   [SCREENS.CHANGE_PASSWORD]: undefined;
+  [SCREENS.HOBBY_SELECT]: undefined;
 };
 
 export type MainStackParamList = {
   [SCREENS.ROOM_LIST]: undefined;
   [SCREENS.CHAT_ROOM]: {roomId: string; roomName: string};
   [SCREENS.CREATE_ROOM]: undefined;
+  [SCREENS.HOBBY_SELECT]: undefined;
 };
 
 // Stack navigator'ları oluştur
@@ -63,6 +66,11 @@ const AuthNavigator = () => (
     <AuthStack.Screen
       name={SCREENS.CHANGE_PASSWORD}
       component={ChangePasswordScreen}
+    />
+    <AuthStack.Screen
+      name={SCREENS.HOBBY_SELECT}
+      component={HobbySelectScreen}
+      options={{headerShown: true, title: 'İlgi Alanları'}}
     />
   </AuthStack.Navigator>
 );
@@ -97,6 +105,11 @@ const MainNavigator = () => (
       component={CreateRoomScreen}
       options={{title: 'Yeni Oda Oluştur'}}
     />
+    <MainStack.Screen
+      name={SCREENS.HOBBY_SELECT}
+      component={HobbySelectScreen}
+      options={{title: 'İlgi Alanları'}}
+    />
   </MainStack.Navigator>
 );
 
@@ -117,9 +130,6 @@ const AppNavigator = () => {
           const userData = await getUserData();
           if (userData) {
             dispatch(setUser(userData));
-
-            // Socket bağlantısını başlat (Firebase auth ile değişecek)
-            // socketService.connect(storedToken);
           }
         }
       } catch (error) {

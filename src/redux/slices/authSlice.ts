@@ -7,6 +7,7 @@ import {
 } from '../../types';
 import {saveUserData, clearUserData} from '../../utils/storage';
 import firebaseAuthService from '../../service/firebaseService';
+import socketService from '../../service/socketService';
 
 // Başlangıç durumu
 const initialState: AuthState = {
@@ -41,6 +42,9 @@ export const loginWithEmail = createAsyncThunk(
 
       // AsyncStorage'a kullanıcı verilerini kaydet
       await saveUserData(user, firebaseUser.uid);
+
+      // Socket bağlantısını başlat
+      socketService.connect(user.username);
 
       return {
         user,
@@ -84,6 +88,9 @@ export const loginWithGoogle = createAsyncThunk(
 
       // AsyncStorage'a kullanıcı verilerini kaydet
       await saveUserData(user, firebaseUser.uid);
+
+      // Socket bağlantısını başlat
+      socketService.connect(user.username);
 
       return {user, token: firebaseUser.uid, isEmailVerified: true};
     } catch (error: any) {
@@ -185,6 +192,9 @@ export const logout = createAsyncThunk(
 
       // AsyncStorage'dan kullanıcı verilerini temizle
       await clearUserData();
+
+      // Socket bağlantısını kapat
+      socketService.disconnect();
 
       return true;
     } catch (error: any) {

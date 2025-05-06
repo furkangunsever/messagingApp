@@ -45,6 +45,9 @@ export const SCREENS = {
   ROOM_LIST: 'RoomList',
   CHAT_ROOM: 'ChatRoom',
   CREATE_ROOM: 'CreateRoom',
+
+  // Hobi ve ilgi alanları
+  HOBBY_SELECT: 'HobbySelect',
 } as const;
 
 // Socket.IO olayları

@@ -21,6 +21,7 @@ import {
 import {COLORS, SCREENS} from '../../config/constants';
 import CustomInput from '../../components/CustomInput';
 import CustomButton from '../../components/CustomButton';
+import firebaseAuthService from '../../service/firebaseService';
 
 const windowWidth = Dimensions.get('window').width;
 const windowHeight = Dimensions.get('window').height;
@@ -35,6 +36,7 @@ const LoginScreen: React.FC<{navigation: any}> = ({navigation}) => {
   const {isLoading, error, emailVerificationSent} = useSelector(
     (state: RootState) => state.auth,
   );
+  const user = useSelector((state: RootState) => state.auth.user);
 
   useEffect(() => {
     // Hata mesajını temizle
@@ -93,6 +95,9 @@ const LoginScreen: React.FC<{navigation: any}> = ({navigation}) => {
           password,
         }) as any,
       );
+
+      // Giriş başarılı olduğunda doğrudan hobi seçme sayfasına yönlendir
+      navigation.navigate(SCREENS.HOBBY_SELECT);
     } catch (err) {
       // Redux tarafından hata yönetiliyor
       console.error('Login error:', err);
@@ -102,6 +107,9 @@ const LoginScreen: React.FC<{navigation: any}> = ({navigation}) => {
   const handleGoogleLogin = async () => {
     try {
       await dispatch(loginWithGoogle() as any);
+
+      // Giriş başarılı olduğunda doğrudan hobi seçme sayfasına yönlendir
+      navigation.navigate(SCREENS.HOBBY_SELECT);
     } catch (err) {
       console.error('Google login error:', err);
     }

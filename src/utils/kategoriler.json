@@ -1,0 +1,84 @@
+{
+  "kategoriler": {
+    "sanat": {
+      "emoji": "🎨",
+      "isim": "Sanat"
+    },
+    "teknoloji": {
+      "emoji": "💻",
+      "isim": "Teknoloji"
+    },
+    "yemek": {
+      "emoji": "🍳",
+      "isim": "Yemek"
+    },
+    "oyun": {
+      "emoji": "🎮",
+      "isim": "Oyun"
+    },
+    "doga": {
+      "emoji": "🌿",
+      "isim": "Doğa"
+    },
+    "muzik": {
+      "emoji": "🎵",
+      "isim": "Müzik"
+    },
+    "kitap": {
+      "emoji": "📚",
+      "isim": "Kitap"
+    },
+    "spor": {
+      "emoji": "⚽",
+      "isim": "Spor"
+    },
+    "film": {
+      "emoji": "🎬",
+      "isim": "Film"
+    },
+    "fotoğraf": {
+      "emoji": "📸",
+      "isim": "Fotoğraf"
+    },
+    "yazilim": {
+      "emoji": "🧑‍💻",
+      "isim": "Yazılım"
+    },
+    "moda": {
+      "emoji": "👗",
+      "isim": "Moda"
+    },
+    "seyahat": {
+      "emoji": "✈️",
+      "isim": "Seyahat"
+    },
+    "astroloji": {
+      "emoji": "🔮",
+      "isim": "Astroloji"
+    },
+    "hayvanlar": {
+      "emoji": "🐾",
+      "isim": "Hayvanlar"
+    },
+    "bilim": {
+      "emoji": "🔬",
+      "isim": "Bilim"
+    },
+    "bahçecilik": {
+      "emoji": "🪴",
+      "isim": "Bahçecilik"
+    },
+    "elisi": {
+      "emoji": "🧶",
+      "isim": "El İşi"
+    },
+    "psikoloji": {
+      "emoji": "🧠",
+      "isim": "Psikoloji"
+    },
+    "tarih": {
+      "emoji": "🏛️",
+      "isim": "Tarih"
+    }
+  }
+}
