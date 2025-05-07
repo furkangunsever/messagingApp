@@ -25,7 +25,7 @@ import {
 import RoomListScreen from '../screens/RoomListScreen';
 import ChatRoomScreen from '../screens/ChatRoomScreen';
 import CreateRoomScreen from '../screens/CreateRoomScreen';
-import HobbySelectScreen from '../screens/HobbySelectScreen';
+import HobbySelectionScreen from '../screens/HobbySelectionScreen';
 
 // Stack navigator türleri
 export type AuthStackParamList = {
@@ -34,14 +34,13 @@ export type AuthStackParamList = {
   [SCREENS.EMAIL_VERIFICATION]: {email: string};
   [SCREENS.FORGOT_PASSWORD]: undefined;
   [SCREENS.CHANGE_PASSWORD]: undefined;
-  [SCREENS.HOBBY_SELECT]: undefined;
 };
 
 export type MainStackParamList = {
   [SCREENS.ROOM_LIST]: undefined;
   [SCREENS.CHAT_ROOM]: {roomId: string; roomName: string};
   [SCREENS.CREATE_ROOM]: undefined;
-  [SCREENS.HOBBY_SELECT]: undefined;
+  [SCREENS.HOBBY_SELECTION]: undefined;
 };
 
 // Stack navigator'ları oluştur
@@ -72,7 +71,7 @@ const AuthNavigator = () => (
 
 const MainNavigator = () => (
   <MainStack.Navigator
-    initialRouteName={SCREENS.ROOM_LIST}
+    initialRouteName={SCREENS.HOBBY_SELECTION}
     screenOptions={{
       headerStyle: {
         backgroundColor: COLORS.PRIMARY,
@@ -82,6 +81,11 @@ const MainNavigator = () => (
         fontWeight: 'bold',
       },
     }}>
+    <MainStack.Screen
+      name={SCREENS.HOBBY_SELECTION}
+      component={HobbySelectionScreen}
+      options={{title: 'İlgi Alanlarını Seç'}}
+    />
     <MainStack.Screen
       name={SCREENS.ROOM_LIST}
       component={RoomListScreen}
@@ -99,11 +103,6 @@ const MainNavigator = () => (
       name={SCREENS.CREATE_ROOM}
       component={CreateRoomScreen}
       options={{title: 'Yeni Oda Oluştur'}}
-    />
-    <MainStack.Screen
-      name={SCREENS.HOBBY_SELECT}
-      component={HobbySelectScreen}
-      options={{title: 'İlgi Alanları'}}
     />
   </MainStack.Navigator>
 );

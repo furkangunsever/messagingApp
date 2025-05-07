@@ -100,7 +100,6 @@ const LoginScreen: React.FC<{navigation: any}> = ({navigation}) => {
       console.log('[LOGIN] Login result:', result);
 
       // Başarılı giriş durumunda navigasyon AppNavigator tarafından otomatik yapılacak
-      // HobbySelectScreen'e manuel yönlendirme yapmıyoruz
     } catch (err) {
       // Redux tarafından hata yönetiliyor
       console.error('Login error:', err);
@@ -115,7 +114,6 @@ const LoginScreen: React.FC<{navigation: any}> = ({navigation}) => {
       console.log('[LOGIN] Google login result:', result);
 
       // Başarılı giriş durumunda navigasyon AppNavigator tarafından otomatik yapılacak
-      // HobbySelectScreen'e manuel yönlendirme yapmıyoruz
     } catch (err) {
       console.error('Google login error:', err);
     }

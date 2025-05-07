@@ -1,37 +1,27 @@
 import React from 'react';
 import {StyleSheet, TouchableOpacity, Text, View} from 'react-native';
 import {COLORS} from '../config/constants';
-import {Hobby} from '../types';
+import {Hobby} from '../services/firebase/database/hobbies/types';
 
 interface HobbyItemProps {
   hobby: Hobby;
-  selected: boolean;
-  disabled?: boolean;
-  onPress: (hobby: Hobby) => void;
+  isSelected: boolean;
+  onSelect: () => void;
 }
 
-const HobbyItem: React.FC<HobbyItemProps> = ({
-  hobby,
-  selected,
-  disabled = false,
-  onPress,
-}) => {
+const HobbyItem: React.FC<HobbyItemProps> = ({hobby, isSelected, onSelect}) => {
   return (
     <TouchableOpacity
-      style={[
-        styles.container,
-        selected && styles.selected,
-        disabled && styles.disabled,
-      ]}
-      onPress={() => !disabled && onPress(hobby)}
-      activeOpacity={disabled ? 1 : 0.7}
-      disabled={disabled}>
-      <Text style={[styles.name, selected && styles.selectedText]}>
+      style={[styles.container, isSelected && styles.selected]}
+      onPress={onSelect}
+      activeOpacity={0.7}>
+      <Text style={styles.emoji}>{hobby.emoji}</Text>
+      <Text style={[styles.name, isSelected && styles.selectedText]}>
         {hobby.name}
       </Text>
-      {hobby.isPopular && (
-        <View style={styles.popularBadge}>
-          <Text style={styles.popularText}>Popüler</Text>
+      {isSelected && (
+        <View style={styles.checkmark}>
+          <Text style={styles.checkmarkText}>✓</Text>
         </View>
       )}
     </TouchableOpacity>
@@ -40,38 +30,45 @@ const HobbyItem: React.FC<HobbyItemProps> = ({
 
 const styles = StyleSheet.create({
   container: {
+    width: '48%',
     backgroundColor: '#F5F5F5',
-    borderRadius: 20,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    marginRight: 8,
-    marginBottom: 8,
-    flexDirection: 'row',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
     alignItems: 'center',
+    position: 'relative',
   },
   selected: {
-    backgroundColor: COLORS.PRIMARY,
+    borderWidth: 2,
+    borderColor: COLORS.PRIMARY,
+    backgroundColor: '#F0F8FF',
   },
-  disabled: {
-    opacity: 0.5,
+  emoji: {
+    fontSize: 32,
+    marginBottom: 8,
   },
   name: {
     fontSize: 14,
+    fontWeight: 'bold',
     color: COLORS.TEXT,
+    textAlign: 'center',
   },
   selectedText: {
-    color: 'white',
+    color: COLORS.PRIMARY,
   },
-  popularBadge: {
-    backgroundColor: '#FFC107',
-    borderRadius: 4,
-    paddingHorizontal: 4,
-    paddingVertical: 2,
-    marginLeft: 8,
+  checkmark: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: COLORS.PRIMARY,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  popularText: {
+  checkmarkText: {
     color: 'white',
-    fontSize: 10,
     fontWeight: 'bold',
   },
 });

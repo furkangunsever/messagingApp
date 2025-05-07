@@ -103,23 +103,3 @@ export interface PasswordUpdateCredentials {
   password: string;
   confirmPassword: string;
 }
-
-// Hobi ve Kategoriler için tip tanımlamaları
-export interface Hobby {
-  id: string;
-  name: string;
-  isPopular?: boolean;
-}
-
-export interface Category {
-  id: string;
-  name: string;
-  emoji: string;
-  hobbies: Hobby[];
-}
-
-export interface UserHobbies {
-  userId: string;
-  hobbies: string[]; // Hobi ID'leri
-  updatedAt: string;
-}
