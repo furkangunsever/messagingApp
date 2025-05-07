@@ -1,7 +1,7 @@
 import {createSlice, createAsyncThunk, PayloadAction} from '@reduxjs/toolkit';
 import uuid from 'react-native-uuid';
 import {ChatState, Message, Room} from '../../types';
-import socketService from '../../service/socketService';
+import socketService from '../../services/socketService';
 import {
   saveOfflineMessage,
   getOfflineMessages,

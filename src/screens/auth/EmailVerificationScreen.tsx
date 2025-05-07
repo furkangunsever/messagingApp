@@ -21,7 +21,7 @@ import {
 import {COLORS, SCREENS} from '../../config/constants';
 import CustomInput from '../../components/CustomInput';
 import CustomButton from '../../components/CustomButton';
-import firebaseAuthService from '../../service/firebaseService';
+import firebaseAuthService from '../../services/firebase/auth/index';
 import auth from '@react-native-firebase/auth';
 
 const windowWidth = Dimensions.get('window').width;

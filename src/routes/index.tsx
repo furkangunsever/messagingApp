@@ -9,7 +9,7 @@ import {SCREENS, COLORS} from '../config/constants';
 import {RootState} from '../redux/store';
 import {getUserToken, getUserData} from '../utils/storage';
 import {setUser} from '../redux/slices/authSlice';
-import socketService from '../service/socketService';
+import socketService from '../services/socketService';
 import {initializeFirebase} from '../config/firebaseConfig';
 
 // Auth Ekranları
@@ -66,11 +66,6 @@ const AuthNavigator = () => (
     <AuthStack.Screen
       name={SCREENS.CHANGE_PASSWORD}
       component={ChangePasswordScreen}
-    />
-    <AuthStack.Screen
-      name={SCREENS.HOBBY_SELECT}
-      component={HobbySelectScreen}
-      options={{headerShown: true, title: 'İlgi Alanları'}}
     />
   </AuthStack.Navigator>
 );
@@ -142,6 +137,14 @@ const AppNavigator = () => {
     checkUserToken();
   }, [dispatch]);
 
+  // Redux auth state değişimlerini konsola yazarak debug edelim
+  useEffect(() => {
+    console.log('[ROUTER] Auth state değişti:', {
+      token,
+      user: user?.id || null,
+    });
+  }, [token, user]);
+
   if (isLoading) {
     return (
       <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
@@ -150,9 +153,13 @@ const AppNavigator = () => {
     );
   }
 
+  // Kullanıcı kimlik doğrulaması var mı ve geçerli mi kontrol et
+  const isAuthenticated = !!token && !!user;
+  console.log('[ROUTER] Kullanıcı kimlik durumu:', isAuthenticated);
+
   return (
     <NavigationContainer>
-      {token && user ? <MainNavigator /> : <AuthNavigator />}
+      {isAuthenticated ? <MainNavigator /> : <AuthNavigator />}
     </NavigationContainer>
   );
 };

@@ -194,6 +194,7 @@ const HobbySelectScreen: React.FC = () => {
     const isSelected = isCategorySelected(category);
     return (
       <TouchableOpacity
+        key={category.id}
         style={[styles.categoryItem, isSelected && styles.selectedCategoryItem]}
         onPress={() => handleSelectCategory(category)}>
         <Text style={styles.categoryEmoji}>{category.emoji}</Text>

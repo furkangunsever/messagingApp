@@ -24,7 +24,7 @@ import {COLORS, SCREENS, MESSAGE_TYPES} from '../config/constants';
 import MessageBubble from '../components/MessageBubble';
 import ChatInput from '../components/ChatInput';
 import {Message} from '../types';
-import socketService from '../service/socketService';
+import socketService from '../services/socketService';
 
 type ChatRoomScreenRouteProp = RouteProp<
   MainStackParamList,

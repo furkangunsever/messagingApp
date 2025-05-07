@@ -6,8 +6,10 @@ import {
   RegisterCredentials,
 } from '../../types';
 import {saveUserData, clearUserData} from '../../utils/storage';
-import firebaseAuthService from '../../service/firebaseService';
-import socketService from '../../service/socketService';
+import firebaseAuthService from '../../services/firebase/auth/index';
+import socketService from '../../services/socketService';
+import {userDatabaseService} from '../../services/firebase/database/users';
+import database from '@react-native-firebase/database';
 
 // Başlangıç durumu
 const initialState: AuthState = {
@@ -31,6 +33,8 @@ export const loginWithEmail = createAsyncThunk(
         credentials.password,
       );
 
+      // Eğer işlem buraya kadar geldiyse başarılıdır
+
       // Kullanıcı bilgilerini oluştur
       const user: User = {
         id: firebaseUser.uid,
@@ -42,6 +46,45 @@ export const loginWithEmail = createAsyncThunk(
 
       // AsyncStorage'a kullanıcı verilerini kaydet
       await saveUserData(user, firebaseUser.uid);
+
+      // Firebase Realtime Database'e kullanıcı verilerini kaydet
+      // Eğer kullanıcı yoksa oluştur, varsa sadece online durumunu güncelle
+      try {
+        console.log('[FIREBASE DB] Kullanıcı verileri kaydediliyor: ', user.id);
+        const userSnapshot = await database()
+          .ref(`users/${user.id}`)
+          .once('value');
+
+        if (!userSnapshot.exists()) {
+          // Kullanıcı yoksa tüm bilgileri kaydet
+          await database()
+            .ref(`users/${user.id}`)
+            .set({
+              name: user.username,
+              email: user.email,
+              photoURL: user.photoURL || null,
+              isOnline: true,
+              lastLogin: database.ServerValue.TIMESTAMP,
+              createdAt: database.ServerValue.TIMESTAMP,
+            });
+          console.log('[FIREBASE DB] Yeni kullanıcı kaydedildi');
+        } else {
+          // Kullanıcı varsa sadece giriş bilgilerini güncelle
+          await database().ref(`users/${user.id}`).update({
+            isOnline: true,
+            lastLogin: database.ServerValue.TIMESTAMP,
+          });
+          console.log('[FIREBASE DB] Kullanıcı durumu güncellendi');
+        }
+
+        // Çevrimiçi durumunu takip et ve kullanıcı çıkış yapmadan uygulamayı kapatırsa
+        // otomatik olarak çevrimdışı olarak işaretle
+        database().ref(`status/${user.id}`).set(true);
+        database().ref(`status/${user.id}`).onDisconnect().set(false);
+      } catch (dbError) {
+        console.error('[FIREBASE DB] Kullanıcı kaydı hatası:', dbError);
+        // Veritabanı hatası olsa bile giriş işlemine devam et
+      }
 
       // Socket bağlantısını başlat
       socketService.connect(user.username);
@@ -63,6 +106,7 @@ export const loginWithEmail = createAsyncThunk(
         });
       }
 
+      // Hata durumunda rejectWithValue ile durumu bildir
       return rejectWithValue(
         error.userMessage || error.message || 'Giriş başarısız oldu',
       );
@@ -88,6 +132,49 @@ export const loginWithGoogle = createAsyncThunk(
 
       // AsyncStorage'a kullanıcı verilerini kaydet
       await saveUserData(user, firebaseUser.uid);
+
+      // Firebase Realtime Database'e kullanıcı verilerini kaydet
+      // Eğer kullanıcı yoksa oluştur, varsa sadece online durumunu güncelle
+      try {
+        console.log(
+          '[FIREBASE DB] Google kullanıcı verileri kaydediliyor: ',
+          user.id,
+        );
+        const userSnapshot = await database()
+          .ref(`users/${user.id}`)
+          .once('value');
+
+        if (!userSnapshot.exists()) {
+          // Kullanıcı yoksa tüm bilgileri kaydet
+          await database()
+            .ref(`users/${user.id}`)
+            .set({
+              name: user.username,
+              email: user.email,
+              photoURL: user.photoURL || null,
+              isOnline: true,
+              lastLogin: database.ServerValue.TIMESTAMP,
+              createdAt: database.ServerValue.TIMESTAMP,
+              authProvider: 'google',
+            });
+          console.log('[FIREBASE DB] Yeni Google kullanıcısı kaydedildi');
+        } else {
+          // Kullanıcı varsa sadece giriş bilgilerini güncelle
+          await database().ref(`users/${user.id}`).update({
+            isOnline: true,
+            lastLogin: database.ServerValue.TIMESTAMP,
+          });
+          console.log('[FIREBASE DB] Google kullanıcı durumu güncellendi');
+        }
+
+        // Çevrimiçi durumunu takip et ve kullanıcı çıkış yapmadan uygulamayı kapatırsa
+        // otomatik olarak çevrimdışı olarak işaretle
+        database().ref(`status/${user.id}`).set(true);
+        database().ref(`status/${user.id}`).onDisconnect().set(false);
+      } catch (dbError) {
+        console.error('[FIREBASE DB] Google kullanıcı kaydı hatası:', dbError);
+        // Veritabanı hatası olsa bile giriş işlemine devam et
+      }
 
       // Socket bağlantısını başlat
       socketService.connect(user.username);
@@ -121,6 +208,30 @@ export const register = createAsyncThunk(
         photoURL: null,
         isOnline: false,
       };
+
+      // Firebase Realtime Database'e yeni kullanıcı verilerini kaydet
+      try {
+        console.log(
+          '[FIREBASE DB] Yeni kayıt kullanıcı verileri kaydediliyor: ',
+          user.id,
+        );
+
+        // Kullanıcı kayıt bilgilerini oluştur
+        await database().ref(`users/${user.id}`).set({
+          name: user.username,
+          email: user.email,
+          photoURL: null,
+          isOnline: false,
+          emailVerified: false,
+          createdAt: database.ServerValue.TIMESTAMP,
+          lastSeen: database.ServerValue.TIMESTAMP,
+        });
+
+        console.log('[FIREBASE DB] Yeni kayıt kullanıcı kaydedildi');
+      } catch (dbError) {
+        console.error('[FIREBASE DB] Yeni kullanıcı kaydı hatası:', dbError);
+        // Veritabanı hatası olsa bile kayıt işlemine devam et
+      }
 
       return {
         user,
@@ -185,8 +296,37 @@ export const changePassword = createAsyncThunk(
 
 export const logout = createAsyncThunk(
   'auth/logout',
-  async (_, {rejectWithValue}) => {
+  async (_, {rejectWithValue, getState}) => {
     try {
+      // Mevcut kullanıcı ID'sini al
+      const state = getState() as any;
+      const userId = state.auth.user?.id;
+
+      if (userId) {
+        // Firebase Realtime Database'de kullanıcı durumunu güncelle
+        try {
+          console.log(
+            '[FIREBASE DB] Kullanıcı çıkış durumu güncelleniyor: ',
+            userId,
+          );
+          await database().ref(`users/${userId}`).update({
+            isOnline: false,
+            lastSeen: database.ServerValue.TIMESTAMP,
+          });
+
+          // Çevrimiçi durumunu false olarak güncelle
+          await database().ref(`status/${userId}`).set(false);
+
+          console.log('[FIREBASE DB] Kullanıcı çıkış durumu güncellendi');
+        } catch (dbError) {
+          console.error(
+            '[FIREBASE DB] Kullanıcı çıkış durumu güncelleme hatası:',
+            dbError,
+          );
+          // Veritabanı hatası olsa bile çıkış işlemine devam et
+        }
+      }
+
       // Firebase'den çıkış yap
       await firebaseAuthService.signOut();
 
@@ -238,7 +378,12 @@ const authSlice = createSlice({
         state.isEmailVerified = action.payload.isEmailVerified;
       })
       .addCase(loginWithEmail.rejected, (state, action) => {
+        console.log('[REDUX] Login hatası: ', action.payload);
         state.isLoading = false;
+        // Hata durumunda kullanıcı ve token bilgilerini tamamen temizle
+        state.user = null;
+        state.token = null;
+        state.isEmailVerified = false;
 
         // Eğer payload bir obje ise
         if (typeof action.payload === 'object' && action.payload !== null) {
@@ -255,6 +400,15 @@ const authSlice = createSlice({
           // String türündeki hatalar
           state.error = action.payload as string;
         }
+
+        // Normal işlem akışını durdurmak için socket bağlantısının kapatıldığından emin ol
+        socketService.disconnect();
+
+        console.log('[REDUX] Auth state after error: ', {
+          user: state.user,
+          token: state.token,
+          error: state.error,
+        });
       })
 
       // Google giriş
@@ -269,8 +423,22 @@ const authSlice = createSlice({
         state.isEmailVerified = true; // Google ile giriş yapıldığında e-posta doğrulanmış kabul edilir
       })
       .addCase(loginWithGoogle.rejected, (state, action) => {
+        console.log('[REDUX] Google login hatası: ', action.payload);
         state.isLoading = false;
+        // Google giriş hatası durumunda da kullanıcı bilgilerini temizle
+        state.user = null;
+        state.token = null;
+        state.isEmailVerified = false;
         state.error = action.payload as string;
+
+        // Normal işlem akışını durdurmak için socket bağlantısının kapatıldığından emin ol
+        socketService.disconnect();
+
+        console.log('[REDUX] Auth state after Google error: ', {
+          user: state.user,
+          token: state.token,
+          error: state.error,
+        });
       })
 
       // Kayıt olma

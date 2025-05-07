@@ -1,32 +1,26 @@
 import auth from '@react-native-firebase/auth';
 import {GoogleSignin} from '@react-native-google-signin/google-signin';
 import {Alert} from 'react-native';
-import {errorLogger} from '../utils/errorLogger';
+import {errorLogger} from '../../../utils/errorLogger';
 import database from '@react-native-firebase/database';
-import {FIREBASE_DB_URL} from '../config/firebaseConfig';
-
-// Firebase bağlantısını doğrudan başlat
-try {
-  if (database().app && database().app.options) {
-    database().app.options.databaseURL = FIREBASE_DB_URL;
-  }
-} catch (err) {
-  // Hata durumunda sessiz kal
-}
 
 // Firebase Auth Servisi
 class FirebaseAuthService {
   // Kullanıcı giriş işlemi
   async signInWithEmailAndPassword(email: string, password: string) {
     try {
+      console.log('[AUTH] Kullanıcı giriş denemesi başlatılıyor: ', email);
+
+      // Doğrudan oturum açmayı deneyelim
       const userCredential = await auth().signInWithEmailAndPassword(
         email,
         password,
       );
 
-      // E-posta doğrulanmamışsa özel hata fırlat
+      console.log('[AUTH] Firebase yanıtı alındı', userCredential.user?.uid);
+
       if (!userCredential.user.emailVerified) {
-        // Doğrulama e-postasını tekrar gönder
+        console.log('[AUTH] Email doğrulanmamış: ', email);
         await userCredential.user.sendEmailVerification();
         throw {
           code: 'auth/email-not-verified',
@@ -34,14 +28,64 @@ class FirebaseAuthService {
         };
       }
 
+      console.log('[AUTH] Giriş başarılı: ', userCredential.user.uid);
       return userCredential.user;
     } catch (error: any) {
+      console.log(
+        '[AUTH] Giriş hatası: ',
+        error.code || 'bilinmeyen hata',
+        error.message,
+      );
+
+      // Firebase'in kendi hatasını kontrol et ve uygun bir hata mesajı göster
+      if (error.code === 'auth/user-not-found') {
+        error.message = 'Bu e-posta adresine ait kullanıcı bulunamadı.';
+      } else if (error.code === 'auth/wrong-password') {
+        error.message = 'Geçersiz şifre. Lütfen şifrenizi kontrol edin.';
+      } else if (error.code === 'auth/invalid-email') {
+        error.message = 'Geçersiz e-posta formatı.';
+      } else if (error.code === 'auth/user-disabled') {
+        error.message = 'Bu kullanıcı hesabı devre dışı bırakılmış.';
+      }
+
       const appError = errorLogger.logFirebaseError(error);
       Alert.alert('Hata', appError.message);
+
+      // Oturumu tamamen kapatmak için ek önlem
+      try {
+        await auth().signOut();
+      } catch (signOutError) {
+        console.log('[AUTH] Hata sonrası çıkış hatası: ', signOutError);
+      }
+
       throw {
         ...error,
-        userMessage: appError.message, // Kullanıcıya gösterilecek mesaj
+        userMessage: appError.message,
       };
+    }
+  }
+
+  // Kullanıcının var olup olmadığını kontrol et
+  async checkUserExists(email: string) {
+    try {
+      console.log('[AUTH] Kullanıcı kontrolü başlatılıyor: ', email);
+
+      // Daha iyi bir Firebase yazılım pratiği uygulayalım
+      const methods = await auth().fetchSignInMethodsForEmail(email);
+      console.log('[AUTH] Bulunan oturum açma yöntemleri:', methods);
+
+      // Boş e-posta veya oturum açma yöntemi yoksa kullanıcı yoktur
+      if (!email || !methods || methods.length === 0) {
+        console.log('[AUTH] Kullanıcı bulunamadı');
+        return false;
+      }
+
+      console.log('[AUTH] Kullanıcı mevcut');
+      return true;
+    } catch (error) {
+      console.log('[AUTH] Kullanıcı kontrolünde hata:', error);
+      // Burada false dönmek zorunda değiliz, hata Firebase'den geldiyse, belki kullanıcı vardır
+      return false;
     }
   }
 
@@ -57,10 +101,7 @@ class FirebaseAuthService {
         password,
       );
 
-      // Kullanıcı adını güncelle
       await userCredential.user.updateProfile({displayName});
-
-      // E-posta doğrulama gönder
       await userCredential.user.sendEmailVerification();
 
       return userCredential.user;
@@ -77,38 +118,52 @@ class FirebaseAuthService {
   // Google ile giriş işlemi
   async signInWithGoogle() {
     try {
-      // Google giriş yapılandırması
+      console.log('[AUTH] Google giriş başlatılıyor');
       await GoogleSignin.hasPlayServices();
       const googleSignInResult = await GoogleSignin.signIn();
 
-      // googleSignInResult kontrolü
       if (!googleSignInResult) {
+        console.log('[AUTH] Google sign-in result boş');
         throw {
           code: 'auth/google-signin-cancelled',
           message: 'Google ile giriş işlemi iptal edildi veya başarısız oldu.',
         };
       }
 
-      // Google kimlik doğrulama - API yapısına göre idToken kullanımı
-      const {idToken, accessToken} = await GoogleSignin.getTokens();
+      const {idToken} = await GoogleSignin.getTokens();
       if (!idToken) {
+        console.log('[AUTH] Google idToken alınamadı');
         throw {
           code: 'auth/invalid-credential',
           message: 'Google kimlik bilgileri alınamadı. Lütfen tekrar deneyin.',
         };
       }
 
-      // Firebase kimlik bilgisi oluştur (idToken ile)
+      console.log('[AUTH] Google credential oluşturuluyor');
       const googleCredential = auth.GoogleAuthProvider.credential(idToken);
-
-      // Firebase'e giriş yap
       const userCredential = await auth().signInWithCredential(
         googleCredential,
       );
 
+      if (!userCredential.user) {
+        console.log(
+          '[AUTH] Google ile giriş sonrası kullanıcı bilgisi alınamadı',
+        );
+        throw {
+          code: 'auth/user-not-found',
+          message:
+            'Google ile giriş başarılı fakat kullanıcı bilgileri alınamadı.',
+        };
+      }
+
+      console.log('[AUTH] Google giriş başarılı: ', userCredential.user.uid);
       return userCredential.user;
     } catch (error: any) {
-      // Hata nesnesi kontrolü
+      console.log(
+        '[AUTH] Google giriş hatası: ',
+        error.code || 'bilinmeyen hata',
+      );
+
       if (!error) {
         error = {
           code: 'auth/unknown-error',
@@ -116,7 +171,6 @@ class FirebaseAuthService {
         };
       }
 
-      // Google Sign-In'in kendi hata kodları için özel mesajlar
       if (error.code === 'SIGN_IN_CANCELLED') {
         error = {
           code: 'auth/cancelled-popup-request',
@@ -130,9 +184,19 @@ class FirebaseAuthService {
         };
       }
 
-      // Hata mesajını hazırla
       const appError = errorLogger.logFirebaseError(error);
       Alert.alert('Hata', appError.message);
+
+      // Oturumu tamamen kapatmak için ek önlem
+      try {
+        await auth().signOut();
+        await GoogleSignin.signOut();
+      } catch (signOutError) {
+        console.log(
+          '[AUTH] Google hatası sonrası çıkış hatası: ',
+          signOutError,
+        );
+      }
 
       throw {
         code: error.code || 'auth/unknown-error',
@@ -157,25 +221,6 @@ class FirebaseAuthService {
     }
   }
 
-  // E-posta doğrulama kontrolü
-  async verifyEmail(email: string, code: string) {
-    try {
-      // Bu kısım Firebase'in API'ına bağlıdır,
-      // Firebase doğrudan kod ile e-posta doğrulama yapmaz.
-      // Burada normalde kullanıcı e-postasındaki linke tıklar.
-
-      // Bu örnek implementation amaçlıdır
-      return true;
-    } catch (error: any) {
-      const appError = errorLogger.logFirebaseError(error);
-      Alert.alert('Hata', appError.message);
-      throw {
-        ...error,
-        userMessage: appError.message,
-      };
-    }
-  }
-
   // Şifre değiştirme
   async changePassword(currentPassword: string, newPassword: string) {
     try {
@@ -185,15 +230,12 @@ class FirebaseAuthService {
         throw new Error('Kullanıcı bulunamadı');
       }
 
-      // Yeniden kimlik doğrulama
       const credential = auth.EmailAuthProvider.credential(
         user.email,
         currentPassword,
       );
 
       await user.reauthenticateWithCredential(credential);
-
-      // Şifreyi güncelle
       await user.updatePassword(newPassword);
       return true;
     } catch (error: any) {
@@ -210,7 +252,6 @@ class FirebaseAuthService {
   async signOut() {
     try {
       await auth().signOut();
-      // Google'dan da çıkış yap (eğer Google ile giriş yapıldıysa)
       const currentUser = await GoogleSignin.getCurrentUser();
       if (currentUser) {
         await GoogleSignin.signOut();
@@ -236,80 +277,20 @@ class FirebaseAuthService {
     return auth().currentUser;
   }
 
-  // --- Hobi ve Kategori İşlemleri ---
-
-  // Tüm kategorileri ve hobileri getir
-  async getCategories(): Promise<any[]> {
+  // Email doğrulama kodu kontrolü
+  async verifyEmail(email: string, code: string) {
     try {
-      // Veritabanı URL'sini kontrol et ve gerekirse ayarla
-      if (!database().app.options.databaseURL) {
-        database().app.options.databaseURL = FIREBASE_DB_URL;
-      }
-
-      // Doğrudan kategorileri al
-      const snapshot = await database().ref('/kategoriler').once('value');
-
-      if (snapshot.exists()) {
-        const categories: any[] = [];
-        snapshot.forEach(childSnapshot => {
-          const category = childSnapshot.val();
-          category.id = childSnapshot.key;
-          categories.push(category);
-          return undefined;
-        });
-
-        return categories;
-      }
-
-      // Veriler bulunamadıysa varsayılan kategorileri döndür
-      return this.getDefaultCategories();
-    } catch (error) {
-      // Hata durumunda varsayılan kategorileri döndür
-      return this.getDefaultCategories();
-    }
-  }
-
-  // Kullanıcının seçtiği hobileri kaydet
-  async saveUserHobbies(userId: string, hobbies: string[]) {
-    try {
-      await database().ref(`userHobbies/${userId}`).set({
-        hobbies,
-        updatedAt: new Date().toISOString(),
-      });
+      // Firebase'de doğrudan link üzerinden yapılan bir işlem, bu bir özel uygulama
+      await auth().applyActionCode(code);
       return true;
-    } catch (error) {
-      throw error;
+    } catch (error: any) {
+      const appError = errorLogger.logFirebaseError(error);
+      Alert.alert('Hata', appError.message);
+      throw {
+        ...error,
+        userMessage: appError.message,
+      };
     }
-  }
-
-  // Kullanıcının seçtiği hobileri getir
-  async getUserHobbies(userId: string) {
-    try {
-      const snapshot = await database()
-        .ref(`userHobbies/${userId}`)
-        .once('value');
-      return snapshot.val();
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  // Varsayılan test kategorilerini döndür
-  private getDefaultCategories(): any[] {
-    return [
-      {
-        id: 'sanat',
-        name: 'Sanat',
-        emoji: '🎨',
-        hobiler: ['Resim', 'Heykel', 'Kaligrafi'],
-      },
-      {
-        id: 'teknoloji',
-        name: 'Teknoloji',
-        emoji: '💻',
-        hobiler: ['Yapay Zeka', 'Mobil Uygulama', 'Robotik'],
-      },
-    ];
   }
 }
 

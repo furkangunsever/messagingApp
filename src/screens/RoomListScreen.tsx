@@ -19,7 +19,7 @@ import {fetchRooms, setCurrentRoom, setRooms} from '../redux/slices/chatSlice';
 import {COLORS, SCREENS} from '../config/constants';
 import RoomCard from '../components/RoomCard';
 import {Room} from '../types';
-import socketService from '../service/socketService';
+import socketService from '../services/socketService';
 
 type RoomListScreenNavigationProp = StackNavigationProp<
   MainStackParamList,
