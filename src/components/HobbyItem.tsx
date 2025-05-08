@@ -30,7 +30,7 @@ const HobbyItem: React.FC<HobbyItemProps> = ({hobby, isSelected, onSelect}) => {
 
 const styles = StyleSheet.create({
   container: {
-    width: '48%',
+    width: '30%',
     backgroundColor: '#F5F5F5',
     borderRadius: 12,
     padding: 16,

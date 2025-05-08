@@ -72,19 +72,11 @@ const AuthNavigator = () => (
 const MainNavigator = () => (
   <MainStack.Navigator
     initialRouteName={SCREENS.HOBBY_SELECTION}
-    screenOptions={{
-      headerStyle: {
-        backgroundColor: COLORS.PRIMARY,
-      },
-      headerTintColor: COLORS.BACKGROUND,
-      headerTitleStyle: {
-        fontWeight: 'bold',
-      },
-    }}>
+    >
     <MainStack.Screen
       name={SCREENS.HOBBY_SELECTION}
       component={HobbySelectionScreen}
-      options={{title: 'İlgi Alanlarını Seç'}}
+      options={{headerShown: false}}
     />
     <MainStack.Screen
       name={SCREENS.ROOM_LIST}

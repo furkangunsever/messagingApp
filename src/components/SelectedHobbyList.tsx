@@ -5,6 +5,7 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
+  Image,
 } from 'react-native';
 import {COLORS} from '../config/constants';
 import {Hobby} from '../services/firebase/database/hobbies/types';

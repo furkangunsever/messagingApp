@@ -10,6 +10,7 @@ import {
   SafeAreaView,
   Dimensions,
   Alert,
+  Image,
 } from 'react-native';
 import {useSelector} from 'react-redux';
 import {useNavigation} from '@react-navigation/native';
@@ -226,7 +227,10 @@ const HobbySelectionScreen: React.FC = () => {
       </View>
 
       <View style={styles.searchContainer}>
-        
+        <Image
+          source={require('../assets/search.png')}
+          style={styles.searchIcon}
+        />
         <TextInput
           style={styles.searchInput}
           placeholder="Hobi ara..."
@@ -235,6 +239,10 @@ const HobbySelectionScreen: React.FC = () => {
         />
         {searchQuery ? (
           <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <Image
+              source={require('../assets/close.png')}
+              style={styles.closeIcon}
+            />
           </TouchableOpacity>
         ) : null}
       </View>
@@ -321,7 +329,13 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   searchIcon: {
+    width: 20,
+    height: 20,
     marginRight: 8,
+  },
+  closeIcon: {
+    width: 15,
+    height: 15,
   },
   searchInput: {
     flex: 1,
