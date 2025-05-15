@@ -2,11 +2,13 @@ import {createSlice, createAsyncThunk, PayloadAction} from '@reduxjs/toolkit';
 import uuid from 'react-native-uuid';
 import {ChatState, Message, Room} from '../../types';
 import socketService from '../../services/socketService';
+import {messageService, roomService} from '../../services/firebase';
 import {
   saveOfflineMessage,
   getOfflineMessages,
   clearOfflineMessages,
 } from '../../utils/storage';
+import {MESSAGE_TYPES} from '../../config/constants';
 
 const initialState: ChatState = {
   rooms: [],
@@ -23,12 +25,52 @@ export const fetchRooms = createAsyncThunk(
     try {
       console.log('Oda listesi isteniyor...');
 
-      // Doğrudan callback ile odaları alalım
+      // Firebase'den odaları al
+      const roomsData = await roomService.getAllRooms();
+      if (roomsData) {
+        const formattedRooms = Object.keys(roomsData).map(key => {
+          const room = roomsData[key];
+          return {
+            id: room.id || key,
+            name: room.name,
+            type: room.type as 'public' | 'private',
+            createdBy: room.createdBy,
+            createdAt:
+              typeof room.createdAt === 'number'
+                ? new Date(room.createdAt).toISOString()
+                : String(room.createdAt),
+            lastMessage: room.lastMessage
+              ? {
+                  id: `msg_${Date.now()}`,
+                  roomId: room.id || key,
+                  senderId: room.lastMessage.senderId,
+                  content: room.lastMessage.content,
+                  type: 'TEXT' as any,
+                  timestamp:
+                    typeof room.lastMessage.timestamp === 'number'
+                      ? new Date(room.lastMessage.timestamp).toISOString()
+                      : String(room.lastMessage.timestamp),
+                  status: 'delivered' as
+                    | 'delivered'
+                    | 'sent'
+                    | 'read'
+                    | 'failed',
+                }
+              : undefined,
+          };
+        });
+
+        console.log('Firebase odalar yüklendi:', formattedRooms.length);
+        dispatch(setRooms(formattedRooms));
+      }
+
+      // Socket üzerinden odaları alalım - gerçek zamanlı güncel liste
       if (socketService.socket) {
         socketService.socket.emit('get_rooms', (rooms: Room[]) => {
-          console.log('Rooms received callback:', rooms);
-          // Redux store'a oda listesini aktar
-          dispatch(setRooms(rooms || []));
+          console.log('Socket üzerinden gelen oda listesi:', rooms);
+          if (rooms && rooms.length > 0) {
+            dispatch(setRooms(rooms));
+          }
         });
       }
 
@@ -42,14 +84,41 @@ export const fetchRooms = createAsyncThunk(
 
 export const fetchMessages = createAsyncThunk(
   'chat/fetchMessages',
-  async (roomId: string, {rejectWithValue}) => {
+  async (roomId: string, {rejectWithValue, dispatch}) => {
     try {
       // Socket üzerinden seçilen odaya katıl
       socketService.joinRoom(roomId);
 
-      // Not: Mesajlar, socket olayları aracılığıyla reducer'a gelecektir
+      // Firebase'den odaya ait eski mesajları al (geçmiş mesajları göstermek için)
+      const messagesData = await messageService.getMessages(roomId);
+      console.log("Firebase'den mesajlar alındı:", messagesData);
+
+      // Mesajları işle ve store'a ekle
+      if (messagesData) {
+        const formattedMessages: Message[] = Object.keys(messagesData).map(
+          key => {
+            const msg = messagesData[key];
+            return {
+              id: key,
+              roomId: roomId,
+              senderId: msg.sender,
+              content: msg.text,
+              type: msg.mediaUrl ? 'IMAGE' : 'TEXT',
+              timestamp: new Date(msg.timestamp).toISOString(),
+              status: 'delivered' as 'delivered' | 'sent' | 'read' | 'failed',
+            };
+          },
+        );
+
+        // Tüm mesajları redux store'a ekle
+        formattedMessages.forEach(msg => {
+          dispatch(addMessage(msg));
+        });
+      }
+
       return roomId;
     } catch (error: any) {
+      console.error('Mesajlar alınırken hata:', error);
       return rejectWithValue(error.message || 'Mesajlar alınamadı');
     }
   },
@@ -62,24 +131,46 @@ export const sendMessage = createAsyncThunk(
       roomId,
       content,
       senderId,
-      type = 'text',
-    }: {roomId: string; content: string; senderId: string; type?: string},
+      type = MESSAGE_TYPES.TEXT,
+      extraData = null,
+    }: {
+      roomId: string;
+      content: string;
+      senderId: string;
+      type?: string;
+      extraData?: any;
+    },
     {rejectWithValue},
   ) => {
     try {
+      const messageId = uuid.v4().toString();
+      const timestamp = new Date().toISOString();
+
       const message: Message = {
-        id: uuid.v4().toString(),
+        id: messageId,
         roomId,
         senderId,
         content,
         type: type as any,
-        timestamp: new Date().toISOString(),
-        status: 'sent',
+        timestamp,
+        status: 'sent' as 'delivered' | 'sent' | 'read' | 'failed',
+        ...(extraData && {extraData}),
       };
 
       // Socket bağlantısı varsa mesajı gönder
       if (socketService.isConnected()) {
+        // Socket.io ile mesajı gerçek zamanlı gönder - mesaj tipini de gönder
         socketService.sendMessage(roomId, content, senderId);
+
+        // Firebase'e mesajı kalıcı olarak kaydet
+        const firebaseMessage = {
+          sender: senderId,
+          text: content,
+          timestamp: new Date(timestamp).getTime(),
+          pinned: false,
+        };
+
+        await messageService.sendMessage(roomId, firebaseMessage);
       } else {
         // Çevrimdışıysa, mesajı AsyncStorage'a kaydet
         await saveOfflineMessage(message);
@@ -87,6 +178,7 @@ export const sendMessage = createAsyncThunk(
 
       return message;
     } catch (error: any) {
+      console.error('Mesaj gönderilirken hata:', error);
       return rejectWithValue(error.message || 'Mesaj gönderilemedi');
     }
   },
@@ -100,16 +192,34 @@ export const createRoom = createAsyncThunk(
       type,
       password,
     }: {name: string; type: 'public' | 'private'; password?: string},
-    {rejectWithValue},
+    {rejectWithValue, getState},
   ) => {
     try {
       console.log('Yeni oda oluşturuluyor:', {name, type});
-      // Socket üzerinden yeni oda oluştur
+
+      // Kullanıcı bilgisini al
+      const {auth} = getState() as {auth: {user: {id: string}}};
+      const userId = auth.user?.id;
+
+      if (!userId) {
+        return rejectWithValue('Kullanıcı giriş yapmamış');
+      }
+
+      // Socket üzerinden yeni oda oluştur (gerçek zamanlı)
       socketService.createRoom(name, type, password);
+
+      // Firebase'e de odayı kalıcı olarak kaydet
+      const roomData = {
+        name,
+        type,
+        createdBy: userId,
+        password: type === 'private' ? password : undefined,
+      };
+
+      await roomService.createRoom(roomData);
 
       // Oda oluşturulduktan sonra kısa bir süre bekleyip oda listesini yenile
       setTimeout(() => {
-        console.log('Oda oluşturulduktan sonra liste yenileniyor...');
         socketService.getRoomsList();
       }, 1000);
 
@@ -133,11 +243,20 @@ export const syncOfflineMessages = createAsyncThunk(
       // Her çevrimdışı mesajı gönder
       for (const message of offlineMessages) {
         if (socketService.isConnected()) {
+          // Socket.io ile gerçek zamanlı mesaj gönder
           socketService.sendMessage(
             message.roomId,
             message.content,
             message.senderId,
           );
+
+          // Firebase'e kalıcı mesaj kaydı
+          await messageService.sendMessage(message.roomId, {
+            sender: message.senderId,
+            text: message.content,
+            timestamp: new Date(message.timestamp).getTime(),
+            pinned: false,
+          });
         }
       }
 
@@ -222,6 +341,21 @@ const chatSlice = createSlice({
     clearError: state => {
       state.error = null;
     },
+
+    // Firebase'den gelen odaları mevcut listeye ekler
+    updateRoomsFromFirebase: (state, action: PayloadAction<Room[]>) => {
+      const firebaseRooms = action.payload;
+
+      // Mevcut ID'leri kontrol et
+      const existingRoomIds = new Set(state.rooms.map(room => room.id));
+
+      // Sadece mevcut listede olmayan yeni odaları ekle
+      firebaseRooms.forEach(room => {
+        if (!existingRoomIds.has(room.id)) {
+          state.rooms.push(room);
+        }
+      });
+    },
   },
   extraReducers: builder => {
     builder
@@ -302,6 +436,7 @@ export const {
   updateMessageStatus,
   setError,
   clearError,
+  updateRoomsFromFirebase,
 } = chatSlice.actions;
 
 export default chatSlice.reducer;

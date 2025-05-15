@@ -1,4 +1,4 @@
-export interface Message {
+export interface FirebaseMessage {
   sender: string;
   text: string;
   timestamp: number;
@@ -7,7 +7,7 @@ export interface Message {
 }
 
 export interface MessageDatabase {
-  [messageId: string]: Message;
+  [messageId: string]: FirebaseMessage;
 }
 
 export interface CommunityMessages {

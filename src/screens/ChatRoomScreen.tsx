@@ -8,6 +8,8 @@ import {
   Platform,
   Dimensions,
   Text,
+  PermissionsAndroid,
+  Alert,
 } from 'react-native';
 import {RouteProp, useRoute} from '@react-navigation/native';
 import {useDispatch, useSelector} from 'react-redux';
@@ -25,6 +27,7 @@ import MessageBubble from '../components/MessageBubble';
 import ChatInput from '../components/ChatInput';
 import {Message} from '../types';
 import socketService from '../services/socketService';
+import {messageService} from '../services/firebase';
 
 type ChatRoomScreenRouteProp = RouteProp<
   MainStackParamList,
@@ -45,9 +48,10 @@ const ChatRoomScreen: React.FC = () => {
   const user = useSelector((state: RootState) => state.auth.user);
 
   useEffect(() => {
+    // Firebase veritabanından geçmiş mesajlar ve socket.io ile gerçek zamanlı mesajlar için
     dispatch(fetchMessages(roomId) as any);
 
-    socketService.onMessage(newMessage => {
+    socketService.onMessage(async newMessage => {
       console.log('Alınan mesaj:', newMessage);
       const roomIdField = newMessage.room_id || newMessage.roomId;
 
@@ -63,17 +67,48 @@ const ChatRoomScreen: React.FC = () => {
             status: 'delivered',
           };
           dispatch(addMessage(systemMessage));
+
+          // Sistem mesajı kalıcı olarak Firebase'e kaydedilir
+          try {
+            await messageService.sendMessage(roomIdField, {
+              sender: 'system',
+              text: newMessage.content,
+              timestamp: Date.now(),
+              pinned: false,
+            });
+          } catch (error) {
+            console.error("Sistem mesajı Firebase'e kaydedilemedi:", error);
+          }
         } else {
           const formattedMessage: Message = {
             id: newMessage.id || String(Date.now()),
             roomId: roomIdField,
             senderId: newMessage.sender_id || newMessage.senderId,
             content: newMessage.content,
-            type: MESSAGE_TYPES.TEXT as any,
+            type: newMessage.type || MESSAGE_TYPES.TEXT,
             timestamp: newMessage.timestamp || new Date().toISOString(),
             status: 'delivered',
           };
           dispatch(addMessage(formattedMessage));
+
+          // Diğer kullanıcılardan gelen mesajları kalıcı olarak Firebase'e kaydet
+          // Kendi gönderdiğimiz mesajlar zaten sendMessage thunk'ında kaydediliyor
+          if (formattedMessage.senderId !== user?.id) {
+            try {
+              await messageService.sendMessage(roomIdField, {
+                sender: formattedMessage.senderId,
+                text: formattedMessage.content,
+                timestamp: new Date(formattedMessage.timestamp).getTime(),
+                pinned: false,
+                mediaUrl:
+                  formattedMessage.type === MESSAGE_TYPES.IMAGE
+                    ? formattedMessage.content
+                    : undefined,
+              });
+            } catch (error) {
+              console.error("Mesaj Firebase'e kaydedilemedi:", error);
+            }
+          }
         }
       }
     });
@@ -81,7 +116,7 @@ const ChatRoomScreen: React.FC = () => {
     return () => {
       socketService.leaveRoom(roomId);
     };
-  }, [dispatch, roomId]);
+  }, [dispatch, roomId, user?.id]);
 
   useEffect(() => {
     if (messages.length > 0 && !isInitialLoad) {
@@ -93,7 +128,11 @@ const ChatRoomScreen: React.FC = () => {
     }
   }, [messages, isInitialLoad]);
 
-  const handleSendMessage = (content: string) => {
+  const handleSendMessage = (
+    content: string,
+    type = MESSAGE_TYPES.TEXT,
+    extraData = null,
+  ) => {
     if (!user) return;
 
     dispatch(
@@ -101,6 +140,8 @@ const ChatRoomScreen: React.FC = () => {
         roomId,
         content,
         senderId: user.id,
+        type,
+        extraData,
       }) as any,
     );
   };

@@ -12,6 +12,7 @@ export interface User {
 export interface Room {
   id: string;
   name: string;
+  type: 'public' | 'private';
   createdBy: string;
   createdAt: string;
   participants?: string[];

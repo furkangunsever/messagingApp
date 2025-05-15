@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useRef} from 'react';
 import {
   StyleSheet,
   View,
@@ -7,16 +7,28 @@ import {
   Dimensions,
   Platform,
   Keyboard,
+  Animated,
+  Text,
+  Image,
+  ActionSheetIOS,
+  Alert,
 } from 'react-native';
-import {COLORS} from '../config/constants';
+import {COLORS, MESSAGE_TYPES} from '../config/constants';
 
 interface ChatInputProps {
-  onSend: (message: string) => void;
+  onSend: (message: string, type?: string, extraData?: any) => void;
   placeholder?: string;
   disabled?: boolean;
 }
 
 const windowWidth = Dimensions.get('window').width;
+
+// Gönder butonu için basit bileşen
+const SendIcon = () => (
+  <View style={styles.sendIconContainer}>
+    <View style={styles.sendIconTriangle} />
+  </View>
+);
 
 const ChatInput: React.FC<ChatInputProps> = ({
   onSend,
@@ -24,18 +36,87 @@ const ChatInput: React.FC<ChatInputProps> = ({
   disabled = false,
 }) => {
   const [message, setMessage] = useState('');
+  const [isMediaPanelOpen, setIsMediaPanelOpen] = useState(false);
+  const mediaPanelHeight = useRef(new Animated.Value(0)).current;
 
   const handleSend = () => {
     if (message.trim() === '' || disabled) return;
 
-    onSend(message.trim());
+    onSend(message.trim(), MESSAGE_TYPES.TEXT);
     setMessage('');
     Keyboard.dismiss();
   };
 
+  const toggleMediaPanel = () => {
+    if (isMediaPanelOpen) {
+      // Panel kapatma animasyonu
+      Animated.timing(mediaPanelHeight, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: false,
+      }).start(() => {
+        setIsMediaPanelOpen(false);
+      });
+    } else {
+      // Panel açma animasyonu
+      setIsMediaPanelOpen(true);
+      Animated.timing(mediaPanelHeight, {
+        toValue: 120,
+        duration: 200,
+        useNativeDriver: false,
+      }).start();
+    }
+  };
+
+  const handleImageSelection = () => {
+    Alert.alert('Bilgi', 'Fotoğraf paylaşımı yakında eklenecek!');
+  };
+
+  const shareLocation = () => {
+    Alert.alert('Bilgi', 'Konum paylaşımı yakında eklenecek!');
+  };
+
   return (
     <View style={styles.container}>
+      <Animated.View style={[styles.mediaPanel, {height: mediaPanelHeight}]}>
+        <View style={styles.mediaPanelContent}>
+          <TouchableOpacity
+            style={styles.mediaButton}
+            onPress={handleImageSelection}>
+            <View style={styles.mediaButtonIcon}>
+              <Text style={styles.mediaButtonIconText}>📷</Text>
+            </View>
+            <Text style={styles.mediaButtonText}>Fotoğraf</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.mediaButton} onPress={shareLocation}>
+            <View style={styles.mediaButtonIcon}>
+              <Text style={styles.mediaButtonIconText}>📍</Text>
+            </View>
+            <Text style={styles.mediaButtonText}>Konum</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.mediaButton}
+            onPress={() => {
+              Alert.alert('Bilgi', 'Dosya paylaşımı yakında eklenecek!');
+            }}>
+            <View style={styles.mediaButtonIcon}>
+              <Text style={styles.mediaButtonIconText}>📎</Text>
+            </View>
+            <Text style={styles.mediaButtonText}>Dosya</Text>
+          </TouchableOpacity>
+        </View>
+      </Animated.View>
+
       <View style={styles.inputContainer}>
+        <TouchableOpacity
+          style={styles.attachButton}
+          onPress={toggleMediaPanel}
+          disabled={disabled}>
+          <Text style={styles.attachIcon}>+</Text>
+        </TouchableOpacity>
+
         <TextInput
           style={styles.input}
           placeholder={placeholder}
@@ -45,6 +126,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
           multiline
           maxLength={500}
         />
+
         <TouchableOpacity
           style={[
             styles.sendButton,
@@ -59,25 +141,18 @@ const ChatInput: React.FC<ChatInputProps> = ({
   );
 };
 
-// Basit bir gönder ikonu
-const SendIcon = () => (
-  <View style={styles.sendIconContainer}>
-    <View style={styles.sendIconTriangle} />
-  </View>
-);
-
 const styles = StyleSheet.create({
   container: {
     borderTopWidth: 1,
     borderTopColor: '#e5e5e5',
     backgroundColor: COLORS.BACKGROUND,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
     width: windowWidth,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 10,
   },
   input: {
     flex: 1,
@@ -88,7 +163,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     paddingVertical: Platform.OS === 'ios' ? 8 : 5,
     fontSize: 16,
-    marginRight: 10,
+    marginHorizontal: 8,
   },
   sendButton: {
     width: 40,
@@ -119,6 +194,56 @@ const styles = StyleSheet.create({
     borderRightColor: 'transparent',
     borderBottomColor: 'white',
     transform: [{rotate: '90deg'}],
+  },
+  attachButton: {
+    width: 35,
+    height: 35,
+    borderRadius: 17.5,
+    backgroundColor: COLORS.SECONDARY,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  attachIcon: {
+    fontSize: 20,
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  // Medya Paneli Stilleri
+  mediaPanel: {
+    width: '100%',
+    overflow: 'hidden',
+    backgroundColor: '#f5f5f5',
+  },
+  mediaPanelContent: {
+    paddingVertical: 15,
+    paddingHorizontal: 15,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  mediaButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mediaButtonIcon: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 5,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 1},
+    shadowOpacity: 0.2,
+    shadowRadius: 1.5,
+    elevation: 2,
+  },
+  mediaButtonIconText: {
+    fontSize: 24,
+  },
+  mediaButtonText: {
+    fontSize: 12,
+    color: COLORS.TEXT,
   },
 });
 
