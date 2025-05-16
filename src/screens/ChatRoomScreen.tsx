@@ -1,4 +1,4 @@
-import React, {useEffect, useRef, useState} from 'react';
+import React, {useEffect, useRef, useState, useMemo} from 'react';
 import {
   StyleSheet,
   View,
@@ -41,9 +41,11 @@ const ChatRoomScreen: React.FC = () => {
   const flatListRef = useRef<FlatList>(null);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
-  const messages = useSelector(
-    (state: RootState) => state.chat.messages[roomId] || [],
+  const messagesFromState = useSelector(
+    (state: RootState) => state.chat.messages[roomId],
   );
+  const messages = useMemo(() => messagesFromState || [], [messagesFromState]);
+
   const isLoading = useSelector((state: RootState) => state.chat.isLoading);
   const user = useSelector((state: RootState) => state.auth.user);
 
